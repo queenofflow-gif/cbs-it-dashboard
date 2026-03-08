@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CBS IT Service Desk Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1a1a2e}
+#db-wrap{width:100%;min-height:100vh}
+.db-header{background:linear-gradient(135deg,#1a3a5c,#2c5f8a);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.db-brand h1{font-size:1.2rem;font-weight:700}
+.db-brand p{font-size:.78rem;opacity:.75;margin-top:2px}
+.db-meta{text-align:right;font-size:.74rem;opacity:.85;line-height:1.8}
+.week-pill{background:rgba(255,255,255,.2);border-radius:20px;padding:2px 12px;font-size:.76rem;font-weight:600;display:inline-block;margin-bottom:4px}
+.db-body{padding:18px 20px}
+.db-banner{border-radius:8px;padding:10px 14px;font-size:.82rem;margin-bottom:14px;display:none}
+.db-banner.error{background:#fef0f0;border:1px solid #f5c6c6;color:#c0392b}
+.db-banner.info{background:#e8f4fd;border:1px solid #bee3f8;color:#1a6fa8}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:4px solid #2c5f8a;transition:box-shadow .2s,transform .2s}
+.kpi-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.1);transform:translateY(-2px)}
+.kpi-card.good{border-top-color:#27ae60}
+.kpi-card.warn{border-top-color:#e67e22}
+.kpi-card.alert{border-top-color:#e74c3c}
+.kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:#7f8c8d;margin-bottom:8px}
+.kpi-value{font-size:2rem;font-weight:700;color:#1a3a5c;line-height:1}
+.kpi-sub{font-size:.7rem;color:#aaa;margin-top:4px}
+.charts-top{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.charts-bottom{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
+.chart-card{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.chart-title{font-size:.82rem;font-weight:600;color:#1a3a5c;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f0f0f0}
+.db-footer{text-align:center;padding:10px;font-size:.7rem;color:#bbb;background:#f0f2f5}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:850px){.kpi-row,.charts-top,.charts-bottom{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.kpi-row,.charts-top,.charts-bottom{grid-template-columns:1fr}.db-body{padding:12px}}
+</style>
+</head>
+<body>
+<div id="db-wrap">
+  <div class="db-header">
+    <div class="db-brand">
+      <h1>IT Service Desk &mdash; Weekly Dashboard</h1>
+      <p>College of Biblical Studies Houston</p>
+    </div>
+    <div class="db-meta">
+      <div class="week-pill" id="db-weekLabel"><span class="spinner"></span>Loading&hellip;</div>
+      <div>Last updated: <strong id="db-lastUpdated">&mdash;</strong></div>
+      <div>Auto-refreshes every 15 min</div>
+    </div>
+  </div>
+  <div class="db-body">
+    <div class="db-banner error" id="db-errorBanner"></div>
+    <div class="db-banner info"  id="db-infoBanner"></div>
+    <div class="kpi-row">
+      <div class="kpi-card" id="db-card-total">
+        <div class="kpi-label">Total Tickets</div>
+        <div class="kpi-value" id="db-kpi-total">&mdash;</div>
+        <div class="kpi-sub">Created this week</div>
+      </div>
+      <div class="kpi-card" id="db-card-open">
+        <div class="kpi-label">Open / In Progress</div>
+        <div class="kpi-value" id="db-kpi-open">&mdash;</div>
+        <div class="kpi-sub">Awaiting resolution</div>
+      </div>
+      <div class="kpi-card good" id="db-card-resolved">
+        <div class="kpi-label">Resolved</div>
+        <div class="kpi-value" id="db-kpi-resolved">&mdash;</div>
+        <div class="kpi-sub">Closed this week</div>
+      </div>
+      <div class="kpi-card" id="db-card-sla">
+        <div class="kpi-label">SLA Compliance</div>
+        <div class="kpi-value" id="db-kpi-sla">&mdash;</div>
+        <div class="kpi-sub">Within target response time</div>
+      </div>
+    </div>
+    <div class="charts-top">
+      <div class="chart-card">
+        <div class="chart-title">&#128200; Daily Ticket Volume (This Week)</div>
+        <canvas id="db-volumeChart" height="110"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">&#127991;&#65039; Category Breakdown</div>
+        <canvas id="db-categoryChart" height="190"></canvas>
+      </div>
+    </div>
+    <div class="charts-bottom">
+      <div class="chart-card">
+        <div class="chart-title">&#9201;&#65039; SLA Compliance by Priority</div>
+        <canvas id="db-slaChart" height="150"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">&#128165; Open Tickets by Priority</div>
+        <canvas id="db-priorityChart" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="db-footer">CBS Houston IT &middot; Powered by Microsoft 365 &amp; SharePoint &middot; Data refreshes automatically</div>
+</div>
+
+<script>
+(function(){
+  // ── CONFIG ────────────────────────────────────────────────────────────────
+  var SITE        = 'https://cbshouston.sharepoint.com/sites/ITDepartment';
+  var SUMMARY     = 'IT_Dashboard_Summary';
+  var REFRESH_MS  = 15 * 60 * 1000;
+  // ─────────────────────────────────────────────────────────────────────────
+
+  var charts = {};
+  var PAL = ['#2c5f8a','#3498db','#27ae60','#f39c12','#e74c3c','#9b59b6','#1abc9c','#e67e22'];
+
+  function kill(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+  function renderVolume(labels, counts){
+    kill('vol');
+    charts['vol'] = new Chart(document.getElementById('db-volumeChart'),{
+      type:'bar',
+      data:{labels:labels, datasets:[{label:'Tickets',data:counts,backgroundColor:'rgba(44,95,138,0.75)',borderColor:'#2c5f8a',borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#f5f5f5'}},x:{grid:{display:false}}}}
+    });
+  }
+
+  function renderCategory(labels, counts){
+    kill('cat');
+    if(!labels.length){ return; }
+    charts['cat'] = new Chart(document.getElementById('db-categoryChart'),{
+      type:'doughnut',
+      data:{labels:labels, datasets:[{data:counts,backgroundColor:PAL,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:7}}}}
+    });
+  }
+
+  function renderSLA(labels, pcts){
+    kill('sla');
+    if(!labels.length){ return; }
+    charts['sla'] = new Chart(document.getElementById('db-slaChart'),{
+      type:'bar',
+      data:{labels:labels, datasets:[{data:pcts,backgroundColor:pcts.map(function(v){return v>=90?'#27ae60':v>=75?'#e67e22':'#e74c3c';}),borderRadius:5}]},
+      options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#f5f5f5'}},y:{grid:{display:false}}}}
+    });
+  }
+
+  function renderPriority(labels, counts){
+    kill('pri');
+    charts['pri'] = new Chart(document.getElementById('db-priorityChart'),{
+      type:'bar',
+      data:{labels:labels, datasets:[{data:counts,backgroundColor:['#e74c3c','#e67e22','#3498db','#95a5a6'],borderRadius:5}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#f5f5f5'}},x:{grid:{display:false}}}}
+    });
+  }
+
+  async function refresh(){
+    var errEl  = document.getElementById('db-errorBanner');
+    var infoEl = document.getElementById('db-infoBanner');
+    errEl.style.display = 'none';
+    infoEl.style.display = 'none';
+
+    try {
+      // Read all rows from IT_Dashboard_Summary and key by MetricName
+      var url = SITE + "/_api/web/lists/getbytitle('" + encodeURIComponent(SUMMARY) + "')/items"
+              + "?$select=MetricName,MetricValue,MetricLabel,WeekOf,ChartDataJSON&$top=50";
+
+      var resp = await fetch(url, {
+        headers: { 'Accept': 'application/json;odata=nometadata' },
+        credentials: 'include',
+        mode: 'cors'
+      });
+
+      if(!resp.ok) throw new Error('HTTP ' + resp.status + ' — ' + resp.statusText);
+
+      var items = (await resp.json()).value || [];
+
+      if(items.length === 0){
+        infoEl.textContent = 'ℹ️ Dashboard data not yet populated. Power Automate will write data shortly.';
+        infoEl.style.display = 'block';
+        document.getElementById('db-weekLabel').textContent = 'No data yet';
+        return;
+      }
+
+      // Build key-value map
+      var kv = {};
+      items.forEach(function(i){ if(i.MetricName) kv[i.MetricName] = i; });
+
+      // KPIs
+      var total    = (kv['TotalTickets']    || {}).MetricValue || 0;
+      var open     = (kv['OpenTickets']     || {}).MetricValue || 0;
+      var resolved = (kv['ResolvedTickets'] || {}).MetricValue || 0;
+      var slaComp  = (kv['SLACompliance']   || {}).MetricValue;
+      var weekOf   = (kv['TotalTickets']    || {}).WeekOf || '';
+      var lastUpd  = (kv['LastUpdated']     || {}).MetricLabel || null;
+
+      if(slaComp === -1) slaComp = null;
+
+      document.getElementById('db-kpi-total').textContent    = total;
+      document.getElementById('db-kpi-open').textContent     = open;
+      document.getElementById('db-kpi-resolved').textContent = resolved;
+
+      var slaEl   = document.getElementById('db-kpi-sla');
+      var slaCard = document.getElementById('db-card-sla');
+      if(slaComp != null){
+        slaEl.textContent  = slaComp + '%';
+        slaCard.className  = 'kpi-card ' + (slaComp>=90 ? 'good' : slaComp>=75 ? 'warn' : 'alert');
+      } else {
+        slaEl.textContent  = 'N/A';
+        slaCard.className  = 'kpi-card';
+      }
+
+      var ratio = total > 0 ? open / total : 0;
+      document.getElementById('db-card-open').className = 'kpi-card ' + (ratio<0.3?'good':ratio<0.6?'warn':'alert');
+      document.getElementById('db-weekLabel').textContent    = weekOf ? 'Week of ' + weekOf : 'This Week';
+      document.getElementById('db-lastUpdated').textContent  = lastUpd
+        ? new Date(lastUpd).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})
+        : new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+      // Charts — read from ChartDataJSON row
+      var chartData = {};
+      try { chartData = JSON.parse((kv['ChartData']||{}).ChartDataJSON || '{}'); } catch(e){}
+
+      var daily    = chartData.daily    || { labels:[], data:[] };
+      var category = chartData.category || { labels:[], data:[] };
+      var sla      = chartData.sla      || { labels:[], data:[] };
+      var priority = chartData.priority || { labels:[], data:[] };
+
+      renderVolume(daily.labels,    daily.data);
+      renderCategory(category.labels, category.data);
+      renderSLA(sla.labels,         sla.data);
+      renderPriority(priority.labels, priority.data);
+
+    } catch(err){
+      console.error('[CBS Dashboard]', err);
+      errEl.textContent   = '⚠️ Could not load dashboard data: ' + err.message;
+      errEl.style.display = 'block';
+      document.getElementById('db-weekLabel').textContent = 'Error loading data';
+    }
+  }
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
