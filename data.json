@@ -1,0 +1,76 @@
+{
+  "totalTickets": 121,
+  "openTickets": 45,
+  "resolvedTickets": 76,
+  "slaCompliance": 99,
+  "weekOf": "Mar 2-8, 2026",
+  "lastUpdated": "2026-03-09T03:04:50.170Z",
+  "charts": {
+    "daily": {
+      "labels": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "data": [
+        22,
+        18,
+        25,
+        19,
+        21,
+        10,
+        6
+      ]
+    },
+    "category": {
+      "labels": [
+        "Hardware",
+        "Software",
+        "Network",
+        "Access",
+        "Email",
+        "Other"
+      ],
+      "data": [
+        28,
+        35,
+        18,
+        15,
+        12,
+        13
+      ]
+    },
+    "sla": {
+      "labels": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "data": [
+        95,
+        98,
+        100,
+        99
+      ]
+    },
+    "priority": {
+      "labels": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "data": [
+        8,
+        14,
+        16,
+        7
+      ]
+    }
+  }
+}
