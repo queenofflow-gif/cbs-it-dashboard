@@ -26,10 +26,10 @@
     </div>
     <div class="charts-top">
       <div class="chart-card"><div class="chart-title">&#128200; Daily Ticket Volume (This Week)</div><canvas id="db-volumeChart" height="110"></canvas></div>
-      <div class="chart-card"><div class="chart-title">&#127991;&#65039; Category Breakdown</div><canvas id="db-categoryChart" height="190"></canvas></div>
+      <div class="chart-card"><div class="chart-title">&#127991; Category Breakdown</div><canvas id="db-categoryChart" height="190"></canvas></div>
     </div>
     <div class="charts-bottom">
-      <div class="chart-card"><div class="chart-title">&#9201;&#65039; SLA Compliance by Priority</div><canvas id="db-slaChart" height="150"></canvas></div>
+      <div class="chart-card"><div class="chart-title">&#9201; SLA Compliance by Priority</div><canvas id="db-slaChart" height="150"></canvas></div>
       <div class="chart-card"><div class="chart-title">&#128165; Open Tickets by Priority</div><canvas id="db-priorityChart" height="150"></canvas></div>
     </div>
   </div>
@@ -43,12 +43,13 @@
   function renderCategory(l,d){kill('cat');if(!l.length)return;charts['cat']=new Chart(document.getElementById('db-categoryChart'),{type:'doughnut',data:{labels:l,datasets:[{data:d,backgroundColor:PAL,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:7}}}}});}
   function renderSLA(l,d){kill('sla');if(!l.length)return;charts['sla']=new Chart(document.getElementById('db-slaChart'),{type:'bar',data:{labels:l,datasets:[{data:d,backgroundColor:d.map(function(v){return v>=90?'#27ae60':v>=75?'#e67e22':'#e74c3c';}),borderRadius:5}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'#f5f5f5'}},y:{grid:{display:false}}}}});}
   function renderPriority(l,d){kill('pri');charts['pri']=new Chart(document.getElementById('db-priorityChart'),{type:'bar',data:{labels:l,datasets:[{data:d,backgroundColor:['#e74c3c','#e67e22','#3498db','#95a5a6'],borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#f5f5f5'}},x:{grid:{display:false}}}}});}
-  function refresh(){
-    var errEl=document.getElementById('db-errorBanner'),infoEl=document.getElementById('db-infoBanner');
-    errEl.style.display='none';infoEl.style.display='none';
-    fetch('https://raw.githubusercontent.com/queenofflow-gif/cbs-it-dashboard/main/data.json?cb='+Date.now())
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(d){
+  async function refresh(){
+    var e=document.getElementById('db-errorBanner'),i=document.getElementById('db-infoBanner');
+    e.style.display='none';i.style.display='none';
+    try{
+      var r=await fetch('https://raw.githubusercontent.com/queenofflow-gif/cbs-it-dashboard/main/data.json?cb='+Date.now());
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var d=await r.json();
       document.getElementById('db-kpi-total').textContent=d.totalTickets||0;
       document.getElementById('db-kpi-open').textContent=d.openTickets||0;
       document.getElementById('db-kpi-resolved').textContent=d.resolvedTickets||0;
@@ -57,15 +58,13 @@
       var t=d.totalTickets||0,o=d.openTickets||0;
       document.getElementById('db-card-open').className='kpi-card '+((t>0?o/t:0)<0.3?'good':(t>0?o/t:0)<0.6?'warn':'alert');
       document.getElementById('db-weekLabel').textContent=d.weekOf?'Week of '+d.weekOf:'This Week';
-      var lu=d.lastUpdated;
-      document.getElementById('db-lastUpdated').textContent=lu?new Date(lu).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}):new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('db-lastUpdated').textContent=d.lastUpdated?new Date(d.lastUpdated).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}):new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
       var cd=d.charts||{};
       renderVolume((cd.daily||{}).labels||[],(cd.daily||{}).data||[]);
       renderCategory((cd.category||{}).labels||[],(cd.category||{}).data||[]);
       renderSLA((cd.sla||{}).labels||[],(cd.sla||{}).data||[]);
       renderPriority((cd.priority||{}).labels||[],(cd.priority||{}).data||[]);
-    })
-    .catch(function(err){errEl.textContent='Could not load data: '+err.message;errEl.style.display='block';document.getElementById('db-weekLabel').textContent='Error loading data';});
+    }catch(err){e.textContent='⚠️ Could not load data: '+err.message;e.style.display='block';document.getElementById('db-weekLabel').textContent='Error';}
   }
   refresh();setInterval(refresh,REFRESH_MS);
 })();
